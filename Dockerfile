@@ -1,19 +1,24 @@
 # =============================================================================
 # RunPod Serverless ComfyUI Video Worker
+#
+# Based on runpod/comfyui:latest-5090 which has:
+# - Python 3.12, CUDA 13.0, PyTorch 2.8+, RTX 5090 support
+# - ComfyUI pre-installed (but we use Network Volume's copy)
 # =============================================================================
 
-FROM runpod/base:0.6.2-cuda12.2.0
+FROM runpod/comfyui:latest-5090
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    fonts-dejavu-core unzip && rm -rf /var/lib/apt/lists/*
+# Install handler dependencies into the system Python 3.12
+RUN python3.12 -m pip install --no-cache-dir --break-system-packages \
+    runpod boto3 edge-tts && \
+    python3.12 -c "import runpod; print('runpod OK')"
 
-RUN python3.11 -m pip install --no-cache-dir \
-    runpod boto3 edge-tts requests && \
-    python3.11 -c "import runpod; print('OK')"
-
+# App files
 WORKDIR /app
 COPY handler.py /app/handler.py
 COPY scripts/generate_video_v5.py /app/generate_video_v5.py
 COPY workflows/ /app/workflows/
 
-CMD ["python3.11", "/app/handler.py"]
+# Override the image's ENTRYPOINT so our handler runs instead of ComfyUI UI
+ENTRYPOINT []
+CMD ["python3.12", "/app/handler.py"]
