@@ -6,11 +6,11 @@ FROM runpod/base:0.6.2-cuda12.2.0
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    fonts-dejavu-core unzip python3-pip && rm -rf /var/lib/apt/lists/*
+    fonts-dejavu-core unzip curl && rm -rf /var/lib/apt/lists/*
 
-# Python deps
-RUN pip3 install --no-cache-dir --break-system-packages \
-    runpod boto3 edge-tts requests && \
+# Install pip, then our deps
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3 && \
+    pip3 install --no-cache-dir runpod boto3 edge-tts requests && \
     python3 -c "import runpod; print('runpod OK')"
 
 # App files
