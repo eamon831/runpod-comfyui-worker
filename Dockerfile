@@ -1,31 +1,24 @@
 # =============================================================================
 # RunPod Serverless ComfyUI Video Worker
 #
-# MUST use Python 3.12 + CUDA 12.x to match Network Volume's venv
-# (created by comfyui-base pod template with Python 3.12)
+# Uses runpod/base (builds reliably on RunPod) + installs Python 3.12
+# to match Network Volume's venv (created by comfyui-base with Python 3.12)
 # =============================================================================
 
-FROM nvidia/cuda:12.4.1-runtime-ubuntu24.04
+FROM runpod/base:0.6.2-cuda12.2.0
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
+# Install Python 3.12 from deadsnakes PPA (base has 3.11 + 3.10)
+# This makes /usr/bin/python3.12 available so venv symlinks resolve
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3.12-dev \
+    fonts-dejavu-core unzip curl && \
+    rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED && \
+    rm -rf /var/lib/apt/lists/*
 
-# Python 3.12 (default on Ubuntu 24.04) + system deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.12 \
-    python3.12-venv \
-    python3-pip \
-    ffmpeg \
-    fonts-dejavu-core \
-    unzip \
-    curl \
-    git \
-    && rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED \
-    && rm -rf /var/lib/apt/lists/*
-
-# Handler dependencies (installed to system Python 3.12)
-RUN python3.12 -m pip install --no-cache-dir \
-    runpod boto3 edge-tts requests && \
+# Bootstrap pip for Python 3.12 and install handler dependencies
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 && \
+    python3.12 -m pip install --no-cache-dir runpod boto3 edge-tts requests && \
     python3.12 -c "import runpod; print('runpod OK')"
 
 # App files
