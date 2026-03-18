@@ -1,53 +1,43 @@
 # =============================================================================
 # RunPod Serverless ComfyUI Video Worker
 #
-# Generates videos via ComfyUI (Wan 2.2 / LTX 2.3) on RunPod Serverless.
-# Models load from a Network Volume mounted at /runpod-volume.
+# Thin image — ComfyUI + models live on Network Volume at
+# /workspace/runpod-slim/ComfyUI/ (populated via comfyui-base pod template).
+# This image just adds the serverless handler + video pipeline tools.
 # =============================================================================
 
-FROM runpod/worker-comfyui:latest-base
+FROM nvidia/cuda:12.8.0-runtime-ubuntu24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
 
 # ---------------------------------------------------------------------------
 # System dependencies
 # ---------------------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3-pip \
     ffmpeg \
     fonts-dejavu-core \
     wget \
+    unzip \
+    git \
+    && rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
 # Python dependencies
 # ---------------------------------------------------------------------------
 RUN pip install --no-cache-dir \
-    edge-tts \
+    runpod \
     boto3 \
-    runpod
-
-# ---------------------------------------------------------------------------
-# Video-specific ComfyUI custom nodes
-# ---------------------------------------------------------------------------
-WORKDIR /workspace/ComfyUI/custom_nodes
-
-# VideoHelperSuite — VHS_VideoCombine for video output
-RUN git clone --depth 1 https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite && \
-    cd ComfyUI-VideoHelperSuite && pip install --no-cache-dir -r requirements.txt
-
-# LTX Video nodes
-RUN git clone --depth 1 https://github.com/Lightricks/ComfyUI-LTXVideo && \
-    cd ComfyUI-LTXVideo && \
-    if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
-
-# Wan 2.2 video wrapper
-RUN git clone --depth 1 https://github.com/kijai/ComfyUI-WanVideoWrapper && \
-    cd ComfyUI-WanVideoWrapper && \
-    if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+    edge-tts \
+    requests
 
 # ---------------------------------------------------------------------------
 # Real-ESRGAN (upscaling) — pre-built Linux binary
 # ---------------------------------------------------------------------------
-RUN mkdir -p /usr/local/bin && \
-    wget -q https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip \
+RUN wget -q https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip \
     -O /tmp/realesrgan.zip && \
     cd /tmp && unzip -o realesrgan.zip -d realesrgan && \
     cp realesrgan/realesrgan-ncnn-vulkan /usr/local/bin/ && \
@@ -73,11 +63,8 @@ WORKDIR /app
 
 COPY handler.py /app/handler.py
 COPY start.sh /app/start.sh
+COPY scripts/generate_video_v5.py /app/generate_video_v5.py
 COPY workflows/ /app/workflows/
-
-# generate_video_v5.py is copied from the futurescope repo at build time
-# Place it next to the handler for subprocess invocation
-COPY generate_video_v5.py /app/generate_video_v5.py
 
 RUN chmod +x /app/start.sh
 

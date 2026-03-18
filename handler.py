@@ -77,7 +77,7 @@ def upload_to_r2(local_path):
 # Handler
 # ---------------------------------------------------------------------------
 
-WORKSPACE = "/runpod-volume/workspace"
+WORKSPACE = "/workspace/runpod-slim"
 GENERATE_SCRIPT = "/app/generate_video_v5.py"
 
 

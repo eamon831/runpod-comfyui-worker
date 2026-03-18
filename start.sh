@@ -5,59 +5,50 @@ echo "=== RunPod ComfyUI Video Worker ==="
 echo "Starting at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
 # ---------------------------------------------------------------------------
-# Network Volume model symlinks
+# Paths — comfyui-base installs to /workspace/runpod-slim/ComfyUI/
+# Network Volume mounts at /workspace/ (not /runpod-volume/)
 # ---------------------------------------------------------------------------
-VOLUME="/runpod-volume"
-COMFYUI="/workspace/ComfyUI"
-
-if [ -d "$VOLUME/models" ]; then
-    echo "Linking network volume models..."
-
-    # Link each model subdirectory
-    for subdir in diffusion_models loras clip vae upscale_models; do
-        if [ -d "$VOLUME/models/$subdir" ]; then
-            # Create target dir if missing
-            mkdir -p "$COMFYUI/models/$subdir"
-            # Symlink individual files (don't clobber existing)
-            for file in "$VOLUME/models/$subdir"/*; do
-                [ -f "$file" ] || continue
-                target="$COMFYUI/models/$subdir/$(basename "$file")"
-                if [ ! -e "$target" ]; then
-                    ln -s "$file" "$target"
-                    echo "  Linked: $subdir/$(basename "$file")"
-                fi
-            done
-        fi
-    done
-else
-    echo "WARNING: No network volume models found at $VOLUME/models"
-fi
+COMFYUI="/workspace/runpod-slim/ComfyUI"
+WORKSPACE="/workspace/runpod-slim"
 
 # ---------------------------------------------------------------------------
 # Workspace directories
 # ---------------------------------------------------------------------------
-WORKSPACE="$VOLUME/workspace"
 mkdir -p "$WORKSPACE/videos" "$WORKSPACE/LOG" "$WORKSPACE/temp"
 
 # Link music assets if available
-if [ -d "$VOLUME/music" ]; then
+if [ -d "$WORKSPACE/assets/music" ]; then
+    echo "Music assets found"
+elif [ -d "/workspace/music" ]; then
     mkdir -p "$WORKSPACE/assets"
-    if [ ! -e "$WORKSPACE/assets/music" ]; then
-        ln -s "$VOLUME/music" "$WORKSPACE/assets/music"
-        echo "Linked music assets"
-    fi
+    ln -sf "/workspace/music" "$WORKSPACE/assets/music"
+    echo "Linked music assets"
 fi
 
 # ---------------------------------------------------------------------------
 # Start ComfyUI in background
 # ---------------------------------------------------------------------------
-echo "Starting ComfyUI..."
-cd "$COMFYUI" && python3 main.py --listen --port 8188 &
-COMFYUI_PID=$!
-echo "ComfyUI PID: $COMFYUI_PID"
+if [ -d "$COMFYUI" ]; then
+    echo "Starting ComfyUI from $COMFYUI..."
+    cd "$COMFYUI"
+
+    # Use venv if available (comfyui-base creates .venv-cu128)
+    if [ -f ".venv-cu128/bin/activate" ]; then
+        source .venv-cu128/bin/activate
+    fi
+
+    python3 main.py --listen --port 8188 &
+    COMFYUI_PID=$!
+    echo "ComfyUI PID: $COMFYUI_PID"
+else
+    echo "ERROR: ComfyUI not found at $COMFYUI"
+    echo "Make sure Network Volume is attached with ComfyUI installed"
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Start the serverless handler
 # ---------------------------------------------------------------------------
 echo "Starting serverless handler..."
-python3 /app/handler.py
+cd /app
+python3 handler.py
