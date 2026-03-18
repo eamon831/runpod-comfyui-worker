@@ -27,17 +27,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     wget \
     git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Make python3.12 the default python3
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
     update-alternatives --set python3 /usr/bin/python3.12
 
-# Remove EXTERNALLY-MANAGED restriction
-RUN rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED
+# Remove EXTERNALLY-MANAGED restriction and install pip for 3.12
+RUN rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED && \
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
 
 # ---------------------------------------------------------------------------
-# Python dependencies — install with python3.12 explicitly
+# Python dependencies
 # ---------------------------------------------------------------------------
 RUN python3.12 -m pip install --no-cache-dir \
     runpod \
