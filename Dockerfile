@@ -1,16 +1,32 @@
 # =============================================================================
-# RunPod Serverless ComfyUI Video Worker — thin layer
+# RunPod Serverless ComfyUI Video Worker
+#
+# MUST use Python 3.12 + CUDA 12.x to match Network Volume's venv
+# (created by comfyui-base pod template with Python 3.12)
 # =============================================================================
 
-FROM runpod/base:0.6.2-cuda12.2.0
+FROM nvidia/cuda:12.4.1-runtime-ubuntu24.04
 
-# System deps
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Python 3.12 (default on Ubuntu 24.04) + system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    fonts-dejavu-core unzip curl && rm -rf /var/lib/apt/lists/*
+    python3.12 \
+    python3.12-venv \
+    python3-pip \
+    ffmpeg \
+    fonts-dejavu-core \
+    unzip \
+    curl \
+    git \
+    && rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install runpod to Python 3.11 (what this base image uses)
-RUN python3.11 -m pip install --no-cache-dir runpod boto3 edge-tts requests && \
-    python3.11 -c "import runpod; print('runpod OK')"
+# Handler dependencies (installed to system Python 3.12)
+RUN python3.12 -m pip install --no-cache-dir \
+    runpod boto3 edge-tts requests && \
+    python3.12 -c "import runpod; print('runpod OK')"
 
 # App files
 WORKDIR /app
@@ -18,4 +34,4 @@ COPY handler.py /app/handler.py
 COPY scripts/generate_video_v5.py /app/generate_video_v5.py
 COPY workflows/ /app/workflows/
 
-CMD ["python3.11", "/app/handler.py"]
+CMD ["python3.12", "/app/handler.py"]
