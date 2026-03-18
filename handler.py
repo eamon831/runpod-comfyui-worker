@@ -92,7 +92,7 @@ def start_comfyui():
 
     if venv_activate:
         print(f"Using venv via bash activate: {venv_activate}")
-        comfyui_cmd = ["bash", "-c", f"source {venv_activate} && python main.py --listen --port 8188"]
+        comfyui_cmd = ["bash", "-c", f"source {venv_activate} && python3 main.py --listen --port 8188"]
     else:
         print(f"No venv found in {COMFYUI_DIR}, using system python")
         comfyui_cmd = ["python3", "main.py", "--listen", "--port", "8188"]
