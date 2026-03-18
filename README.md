@@ -23,7 +23,7 @@ Built for the [FutureScope](https://github.com/eamon831/futurescope) autonomous 
 
 ### 1. Create a Network Volume
 
-On RunPod dashboard, create a Network Volume (50GB) and populate it:
+On RunPod dashboard, create a Network Volume (**200GB**, datacenter: **US-NC-1**) and populate it via a temp pod:
 
 ```
 /runpod-volume/
@@ -66,8 +66,9 @@ On RunPod dashboard:
 | Setting | Value |
 |---------|-------|
 | Docker image | `yourdockerhub/runpod-comfyui-worker:latest` |
-| GPU | RTX 4090 (24GB) or RTX 5090 (32GB) |
-| Network Volume | Attach the volume from step 1 |
+| GPU | RTX 5090 (32GB) |
+| Datacenter | US-NC-1 (same as Network Volume) |
+| Network Volume | Attach the 200GB volume from step 1 |
 | Max workers | 1 |
 | Execution timeout | 7200 (2 hours) |
 | Idle timeout | 300 (5 min, for FlashBoot) |

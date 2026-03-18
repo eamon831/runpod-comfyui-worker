@@ -32,6 +32,7 @@ Source: https://docs.runpod.io/serverless/endpoints/endpoint-configurations
 - Recommended for models (avoids baking 25GB+ into Docker image)
 - Attach via: Serverless > Endpoint > Manage > Edit > Advanced > Network Volumes
 - Add latency vs NVMe but acceptable for model loading (one-time at startup)
+- - **Our config:** 200GB, US-NC-1, standard storage ($14/month)
 - Source: https://docs.runpod.io/storage/network-volumes
 
 ## Official ComfyUI Worker
