@@ -5,11 +5,17 @@ echo "=== RunPod ComfyUI Video Worker ==="
 echo "Starting at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
 # ---------------------------------------------------------------------------
-# Paths — comfyui-base installs to /workspace/runpod-slim/ComfyUI/
-# Network Volume mounts at /workspace/ (not /runpod-volume/)
+# Paths — Network Volume mounts at /runpod-volume/ on serverless
+# comfyui-base installs to runpod-slim/ComfyUI/ on the volume
 # ---------------------------------------------------------------------------
-COMFYUI="/workspace/runpod-slim/ComfyUI"
-WORKSPACE="/workspace/runpod-slim"
+VOLUME="/runpod-volume"
+COMFYUI="$VOLUME/runpod-slim/ComfyUI"
+WORKSPACE="$VOLUME/runpod-slim"
+
+# Debug: show what's on the volume
+echo "Volume contents:"
+ls -la "$VOLUME/" 2>/dev/null || echo "WARNING: Volume not mounted at $VOLUME"
+echo ""
 
 # ---------------------------------------------------------------------------
 # Workspace directories
@@ -19,9 +25,9 @@ mkdir -p "$WORKSPACE/videos" "$WORKSPACE/LOG" "$WORKSPACE/temp"
 # Link music assets if available
 if [ -d "$WORKSPACE/assets/music" ]; then
     echo "Music assets found"
-elif [ -d "/workspace/music" ]; then
+elif [ -d "$VOLUME/music" ]; then
     mkdir -p "$WORKSPACE/assets"
-    ln -sf "/workspace/music" "$WORKSPACE/assets/music"
+    ln -sf "$VOLUME/music" "$WORKSPACE/assets/music"
     echo "Linked music assets"
 fi
 
@@ -34,6 +40,7 @@ if [ -d "$COMFYUI" ]; then
 
     # Use venv if available (comfyui-base creates .venv-cu128)
     if [ -f ".venv-cu128/bin/activate" ]; then
+        echo "Activating venv..."
         source .venv-cu128/bin/activate
     fi
 
@@ -42,6 +49,8 @@ if [ -d "$COMFYUI" ]; then
     echo "ComfyUI PID: $COMFYUI_PID"
 else
     echo "ERROR: ComfyUI not found at $COMFYUI"
+    echo "Available at volume root:"
+    ls -la "$VOLUME/" 2>/dev/null || echo "Volume not mounted"
     echo "Make sure Network Volume is attached with ComfyUI installed"
     exit 1
 fi
