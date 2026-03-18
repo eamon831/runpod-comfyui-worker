@@ -12,18 +12,73 @@ import json
 import subprocess
 import glob
 import time
-import hashlib
+import sys
 import requests
 import boto3
 from botocore.config import Config
 
 
 # ---------------------------------------------------------------------------
-# ComfyUI readiness
+# Paths — Network Volume mounts at /runpod-volume/ on serverless
 # ---------------------------------------------------------------------------
 
+VOLUME = "/runpod-volume"
+COMFYUI_DIR = f"{VOLUME}/runpod-slim/ComfyUI"
+WORKSPACE = f"{VOLUME}/runpod-slim"
 COMFYUI_URL = "http://localhost:8188"
-COMFYUI_MAX_WAIT = 120  # seconds
+COMFYUI_MAX_WAIT = 180  # seconds
+GENERATE_SCRIPT = "/app/generate_video_v5.py"
+
+
+# ---------------------------------------------------------------------------
+# Startup — start ComfyUI before accepting jobs
+# ---------------------------------------------------------------------------
+
+def start_comfyui():
+    """Start ComfyUI in the background from the Network Volume."""
+    print(f"=== RunPod ComfyUI Video Worker ===")
+    print(f"Looking for ComfyUI at: {COMFYUI_DIR}")
+
+    # Debug: show volume contents
+    if os.path.exists(VOLUME):
+        print(f"Volume contents: {os.listdir(VOLUME)}")
+    else:
+        print(f"WARNING: Volume not mounted at {VOLUME}")
+
+    if not os.path.isdir(COMFYUI_DIR):
+        print(f"ERROR: ComfyUI not found at {COMFYUI_DIR}")
+        if os.path.exists(VOLUME):
+            # Try to find it
+            for root, dirs, files in os.walk(VOLUME):
+                if "main.py" in files and "comfy" in root.lower():
+                    print(f"  Found ComfyUI at: {root}")
+                if root.count(os.sep) - VOLUME.count(os.sep) > 2:
+                    break
+        sys.exit(1)
+
+    # Create workspace dirs
+    os.makedirs(f"{WORKSPACE}/videos", exist_ok=True)
+    os.makedirs(f"{WORKSPACE}/LOG", exist_ok=True)
+    os.makedirs(f"{WORKSPACE}/temp", exist_ok=True)
+
+    # Activate venv if available
+    venv_python = f"{COMFYUI_DIR}/.venv-cu128/bin/python3"
+    if os.path.exists(venv_python):
+        print(f"Using venv python: {venv_python}")
+        comfyui_cmd = [venv_python, "main.py", "--listen", "--port", "8188"]
+    else:
+        print("No venv found, using system python")
+        comfyui_cmd = ["python3", "main.py", "--listen", "--port", "8188"]
+
+    print(f"Starting ComfyUI: {' '.join(comfyui_cmd)}")
+    process = subprocess.Popen(
+        comfyui_cmd,
+        cwd=COMFYUI_DIR,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    print(f"ComfyUI started with PID: {process.pid}")
+    return process
 
 
 def wait_for_comfyui():
@@ -37,7 +92,7 @@ def wait_for_comfyui():
                 return True
         except requests.ConnectionError:
             pass
-        time.sleep(2)
+        time.sleep(3)
     raise RuntimeError(f"ComfyUI did not become ready within {COMFYUI_MAX_WAIT}s")
 
 
@@ -76,10 +131,6 @@ def upload_to_r2(local_path):
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
-
-WORKSPACE = "/runpod-volume/runpod-slim"
-GENERATE_SCRIPT = "/app/generate_video_v5.py"
-
 
 def handler(job):
     """
@@ -172,7 +223,6 @@ def handler(job):
     thumb_url = upload_to_r2(latest_thumb) if latest_thumb else None
 
     # --- 7. Clean up old outputs (keep workspace tidy) ---
-    # Only remove the files we just uploaded, keep progress.json for resume
     try:
         os.remove(latest_video)
         if latest_thumb:
@@ -190,7 +240,10 @@ def handler(job):
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Entry point — start ComfyUI, then accept jobs
 # ---------------------------------------------------------------------------
+
+print("Initializing worker...")
+comfyui_process = start_comfyui()
 
 runpod.serverless.start({"handler": handler})
