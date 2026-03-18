@@ -41,7 +41,7 @@ VOLUME = detect_volume()
 COMFYUI_DIR = f"{VOLUME}/runpod-slim/ComfyUI"
 WORKSPACE = f"{VOLUME}/runpod-slim"
 COMFYUI_URL = "http://localhost:8188"
-COMFYUI_MAX_WAIT = 180  # seconds
+COMFYUI_MAX_WAIT = 300  # seconds
 GENERATE_SCRIPT = "/app/generate_video_v5.py"
 
 
@@ -107,11 +107,10 @@ def start_comfyui():
             comfyui_cmd = ["python3", "main.py", "--listen", "--port", "8188"]
 
     print(f"Starting ComfyUI: {' '.join(comfyui_cmd)}")
+    # Let ComfyUI output go to stdout/stderr so we can see errors in logs
     process = subprocess.Popen(
         comfyui_cmd,
         cwd=COMFYUI_DIR,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
     )
     print(f"ComfyUI started with PID: {process.pid}")
     return process
