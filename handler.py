@@ -76,13 +76,22 @@ def start_comfyui():
     os.makedirs(f"{WORKSPACE}/LOG", exist_ok=True)
     os.makedirs(f"{WORKSPACE}/temp", exist_ok=True)
 
-    # Activate venv if available
-    venv_python = f"{COMFYUI_DIR}/.venv-cu128/bin/python3"
-    if os.path.exists(venv_python):
+    # Find venv — comfyui-base creates .venv-cu128 or similar
+    venv_python = None
+    comfyui_contents = os.listdir(COMFYUI_DIR)
+    print(f"ComfyUI dir contents: {[f for f in comfyui_contents if f.startswith('.venv') or f.startswith('venv')]}")
+
+    for name in comfyui_contents:
+        candidate = f"{COMFYUI_DIR}/{name}/bin/python3"
+        if name.startswith((".venv", "venv")) and os.path.exists(candidate):
+            venv_python = candidate
+            break
+
+    if venv_python:
         print(f"Using venv python: {venv_python}")
         comfyui_cmd = [venv_python, "main.py", "--listen", "--port", "8188"]
     else:
-        print("No venv found, using system python")
+        print(f"No venv found in {COMFYUI_DIR}, using system python")
         comfyui_cmd = ["python3", "main.py", "--listen", "--port", "8188"]
 
     print(f"Starting ComfyUI: {' '.join(comfyui_cmd)}")
