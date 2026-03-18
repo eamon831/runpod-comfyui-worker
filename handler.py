@@ -19,10 +19,25 @@ from botocore.config import Config
 
 
 # ---------------------------------------------------------------------------
-# Paths — Network Volume mounts at /runpod-volume/ on serverless
+# Paths — Network Volume mounts at:
+#   /runpod-volume/  on serverless
+#   /workspace/      on pods
 # ---------------------------------------------------------------------------
 
-VOLUME = "/runpod-volume"
+def detect_volume():
+    """Find where the Network Volume is mounted."""
+    for path in ["/runpod-volume", "/workspace"]:
+        comfyui = f"{path}/runpod-slim/ComfyUI"
+        if os.path.isdir(comfyui):
+            print(f"Found ComfyUI at: {comfyui}")
+            return path
+    # Fallback: check what exists
+    for path in ["/runpod-volume", "/workspace"]:
+        if os.path.exists(path):
+            print(f"Volume at {path}, contents: {os.listdir(path)}")
+    return "/runpod-volume"  # default
+
+VOLUME = detect_volume()
 COMFYUI_DIR = f"{VOLUME}/runpod-slim/ComfyUI"
 WORKSPACE = f"{VOLUME}/runpod-slim"
 COMFYUI_URL = "http://localhost:8188"
