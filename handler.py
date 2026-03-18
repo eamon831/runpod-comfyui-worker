@@ -76,23 +76,22 @@ def start_comfyui():
     os.makedirs(f"{WORKSPACE}/LOG", exist_ok=True)
     os.makedirs(f"{WORKSPACE}/temp", exist_ok=True)
 
-    # Find venv and use bash activate (venv symlinks may point to
-    # a Python version not in this container, so we can't call the
-    # venv python directly — must source activate instead)
+    # Find venv and use its python directly
+    # Base image (runpod/comfyui:latest-5090) has Python 3.12 matching the venv
     comfyui_contents = os.listdir(COMFYUI_DIR)
     venv_dirs = [f for f in comfyui_contents if f.startswith((".venv", "venv"))]
     print(f"ComfyUI venv dirs: {venv_dirs}")
 
-    venv_activate = None
+    venv_python = None
     for name in venv_dirs:
-        candidate = os.path.join(COMFYUI_DIR, name, "bin", "activate")
-        if os.path.exists(candidate):
-            venv_activate = candidate
+        candidate = os.path.join(COMFYUI_DIR, name, "bin", "python3")
+        if os.path.islink(candidate) or os.path.exists(candidate):
+            venv_python = candidate
             break
 
-    if venv_activate:
-        print(f"Using venv via bash activate: {venv_activate}")
-        comfyui_cmd = ["bash", "-c", f"source {venv_activate} && python3 main.py --listen --port 8188"]
+    if venv_python:
+        print(f"Using venv python: {venv_python}")
+        comfyui_cmd = [venv_python, "main.py", "--listen", "--port", "8188"]
     else:
         print(f"No venv found in {COMFYUI_DIR}, using system python")
         comfyui_cmd = ["python3", "main.py", "--listen", "--port", "8188"]
