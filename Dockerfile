@@ -34,6 +34,11 @@ RUN pip install --no-cache-dir \
 # Verify runpod is installed
 RUN python3 -c "import runpod; print(f'runpod {runpod.__version__} installed')"
 
+# Symlink python3.12 to /usr/bin/ so ComfyUI's venv symlinks resolve
+# (venv created on pod points to /usr/bin/python3.12)
+RUN ln -sf $(which python3.12) /usr/bin/python3.12 2>/dev/null || \
+    ln -sf $(which python3) /usr/bin/python3.12
+
 # ---------------------------------------------------------------------------
 # Application files
 # ---------------------------------------------------------------------------
