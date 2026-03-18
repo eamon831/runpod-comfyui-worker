@@ -1,20 +1,27 @@
 # =============================================================================
 # RunPod Serverless ComfyUI Video Worker
 #
-# Thin image — ComfyUI + models live on Network Volume at
-# /runpod-volume/runpod-slim/ComfyUI/ (populated via comfyui-base pod).
-# This image just adds the serverless handler + video pipeline tools.
+# ComfyUI + models live on Network Volume at /runpod-volume/runpod-slim/ComfyUI/
+# This image provides CUDA runtime + our serverless handler.
 # =============================================================================
 
-FROM python:3.12-slim
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 # ---------------------------------------------------------------------------
-# System dependencies
+# System dependencies + Python 3.12
 # ---------------------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-venv \
+    python3.12-dev \
+    python3-pip \
     ffmpeg \
     fonts-dejavu-core \
     unzip \
@@ -22,22 +29,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Make python3.12 the default python3
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    update-alternatives --set python3 /usr/bin/python3.12
+
+# Remove EXTERNALLY-MANAGED restriction
+RUN rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED
+
 # ---------------------------------------------------------------------------
-# Python dependencies
+# Python dependencies — install with python3.12 explicitly
 # ---------------------------------------------------------------------------
-RUN pip install --no-cache-dir \
+RUN python3.12 -m pip install --no-cache-dir \
     runpod \
     boto3 \
     edge-tts \
     requests
 
-# Verify runpod is installed
-RUN python3 -c "import runpod; print(f'runpod {runpod.__version__} installed')"
-
-# Symlink python3.12 to /usr/bin/ so ComfyUI's venv symlinks resolve
-# (venv created on pod points to /usr/bin/python3.12)
-RUN ln -sf $(which python3.12) /usr/bin/python3.12 2>/dev/null || \
-    ln -sf $(which python3) /usr/bin/python3.12
+# Verify
+RUN python3.12 -c "import runpod; print(f'runpod {runpod.__version__} OK')"
+RUN python3.12 -c "import boto3; print('boto3 OK')"
 
 # ---------------------------------------------------------------------------
 # Application files
@@ -51,4 +61,4 @@ COPY workflows/ /app/workflows/
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
-CMD ["python3", "/app/handler.py"]
+CMD ["python3.12", "/app/handler.py"]
