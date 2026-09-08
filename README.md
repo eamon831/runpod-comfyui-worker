@@ -2,7 +2,7 @@
 
 RunPod Serverless worker for generating videos via ComfyUI with Wan 2.2 and LTX 2.3 models.
 
-Built for the [FutureScope](https://github.com/eamon831/futurescope) autonomous YouTube pipeline.
+Built as the generation backend for Studio-Ops, a private multi-agent video pipeline (the public piece is this worker plus the workflows under `workflows/`).
 
 ## How It Works
 
@@ -46,13 +46,7 @@ On RunPod dashboard, create a Network Volume (**150GB**, datacenter: **EU-RO-1**
 
 ### 2. Build the Docker Image
 
-Copy `generate_video_v5.py` from the futurescope repo into this directory before building:
-
-```bash
-cp /path/to/futurescope/scripts/generate_video_v5.py .
-```
-
-Build (must be on x86 Linux, not Apple Silicon):
+The generation script ships in this repo (`scripts/generate_video_v5.py`; the Dockerfile copies it to `/app/`). Build (must be on x86 Linux, not Apple Silicon):
 
 ```bash
 docker build -t yourdockerhub/runpod-comfyui-worker:latest .
