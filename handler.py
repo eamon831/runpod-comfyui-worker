@@ -2,7 +2,7 @@
 """
 RunPod Serverless Handler for ComfyUI Video Generation.
 
-Accepts a FutureScope script JSON, runs generate_video_v5.py via ComfyUI,
+Accepts a script JSON (scenes + metadata), runs generate_video_v5.py via ComfyUI,
 and uploads the resulting video + thumbnail to Cloudflare R2.
 """
 
